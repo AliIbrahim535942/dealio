@@ -1,6 +1,8 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import pool from './config/database';
 import dotenv from 'dotenv';
+import authRouter from './routes/auth.route';
+import { errorHandler } from './middlewares/errorHandler';
 dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -10,6 +12,7 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`${req.method} ${req.path}`);
   next();
 });
+app.use('/api/auth', authRouter);
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
@@ -56,6 +59,9 @@ app.use((req: Request, res: Response) => {
     path: req.path,
   });
 });
+
+app.use(errorHandler);
+
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server');

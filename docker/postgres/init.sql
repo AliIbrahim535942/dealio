@@ -18,6 +18,8 @@ CREATE TYPE user_role AS ENUM ('customer', 'admin');
     phone VARCHAR(20),
     is_active BOOLEAN NOT NULL DEFAULT true,
     is_email_verified BOOLEAN NOT NULL DEFAULT false,
+    email_verification_code VARCHAR(255),
+    verificationCodeTimestamp TIMESTAMP,
     created_at TIMESTAMP NOT NULL DEFAULT now(),
     updated_at TIMESTAMP NOT NULL DEFAULT now()
 );
