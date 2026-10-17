@@ -1,4 +1,4 @@
-import { z } from 'zod';
+import { email, z } from 'zod';
 
 // Reusable field validators
 
@@ -36,4 +36,14 @@ export const signUpSchema = z.object({
   }),
 });
 
+export const localLogInSchema = z.object({
+  body: z.object({
+    email: emailValidator,
+    password: z
+      .string({ message: 'Password is required' })
+      .max(128, 'Password must be at most 128 characters long'),
+  }),
+});
+
 export type signUpBody = z.infer<typeof signUpSchema>['body'];
+export type localLogInSchemaBody = z.infer<typeof localLogInSchema>['body'];

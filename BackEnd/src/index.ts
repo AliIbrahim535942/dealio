@@ -1,5 +1,7 @@
 import express, { Application, Request, Response, NextFunction } from 'express';
 import pool from './config/database';
+import './config/passport';
+import passport from 'passport';
 import dotenv from 'dotenv';
 import authRouter from './routes/auth.route';
 import { errorHandler } from './middlewares/errorHandler';
@@ -7,6 +9,7 @@ dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 app.use(express.json());
+app.use(passport.initialize());
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
   console.log(`${req.method} ${req.path}`);
