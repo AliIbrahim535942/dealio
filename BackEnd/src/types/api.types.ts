@@ -6,10 +6,10 @@ export interface CustomerInfoResponse {
   phone: string;
 }
 export interface UserToLogin {
-  id: string;
+  id: number;
   email: string;
   password: string|null;
-  role: string;
+  role: 'customer'|'admin';
   is_active: boolean;
   is_email_verified: boolean;
 }

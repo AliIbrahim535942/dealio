@@ -12,7 +12,6 @@ passport.use(
         const user = await findUserByEmail(email);
         const hashToCompare = user?.password ?? DUMMY_HASH;
         const isMatch = await bcrypt.compare(password, hashToCompare);
-        console.log(user,isMatch)
         if (!user || !isMatch || !user.is_active) {
           return done(null, false, { message: 'Invalid credentials' });
         }
