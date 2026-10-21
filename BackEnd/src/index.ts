@@ -5,10 +5,12 @@ import passport from 'passport';
 import dotenv from 'dotenv';
 import authRouter from './routes/auth.route';
 import { errorHandler } from './middlewares/errorHandler';
+import cookieParser from 'cookie-parser';
 dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
 app.use(express.json());
+app.use(cookieParser())
 app.use(passport.initialize());
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {

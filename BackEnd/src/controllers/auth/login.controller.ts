@@ -4,6 +4,7 @@ import { AppError } from '../../utils/AppError';
 import { UserToLogin } from '../../types/api.types';
 import {
   issueTokens,
+  refreshCookieOptions,
   USER_AUTH_COOKIE_NAME,
 } from '../../services/token.service';
 import { config } from '../../config/env';
@@ -30,13 +31,7 @@ export async function loginController(
           { userId: user.id, role: user.role },
           { userAgent: req.headers['user-agent'], ipAddress: req.ip },
         );
-        res.cookie(USER_AUTH_COOKIE_NAME, refreshToken, {
-          httpOnly: true,
-          secure: process.env.NODE_ENV === 'production',
-          sameSite: 'lax',
-          maxAge: config.refreshTokenMaxAgeMs(),
-          path: '/api/auth',
-        });
+        res.cookie(USER_AUTH_COOKIE_NAME, refreshToken, refreshCookieOptions());
         return res.status(200).json({
           status: 'success',
           message: 'login successful',
