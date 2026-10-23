@@ -146,3 +146,30 @@ export async function revokeRefreshToken(rawToken: string): Promise<void> {
     [hashToken(rawToken)],
   );
 }
+
+/**
+ * Verifies a JWT token and returns its decoded payload.
+ * Throws 401 if token is invalid or expired.
+ */
+export function verifyAccessToken(token: string): JwtPayload {
+  try {
+    const decoded = jwt.verify(token, config.jwt.secret, {
+      algorithms: ['HS256'],
+      issuer: config.jwt.issuer,
+      audience: config.jwt.audience,
+    });
+    return jwtPayloadSchema.parse(decoded); // parse do the casting
+  } catch (error) {
+    if (error instanceof TokenExpiredError) {
+      throw new AppError('Session expired, please log in again', 401);
+    }
+    if (error instanceof JsonWebTokenError) {
+      throw new AppError('Invalid token', 401);
+    }
+    if (error instanceof ZodError) {
+      console.error('JWT payload shape validation failed:', error.issues);
+      throw new AppError('Invalid token payload', 401);
+    }
+    throw error;
+  }
+}
