@@ -13,3 +13,13 @@ export interface UserToLogin {
   is_active: boolean;
   is_email_verified: boolean;
 }
+export interface UserProfile {
+  id: number;
+  full_name: string;
+  email: string;
+  role: 'admin' | 'customer';
+  phone: string | null;
+  auth_provider: 'local' | 'google';
+  is_email_verified: boolean;
+  created_at: Date;
+}

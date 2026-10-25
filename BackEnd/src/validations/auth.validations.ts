@@ -1,4 +1,4 @@
-import { email, z } from 'zod';
+import { z } from 'zod';
 
 // Reusable field validators
 
@@ -44,6 +44,18 @@ export const localLogInSchema = z.object({
       .max(128, 'Password must be at most 128 characters long'),
   }),
 });
-
+export const verifyEmailSchema = z.object({
+  body: z.object({
+    email: emailValidator,
+    code: z
+      .string()
+      .trim()
+      .regex(/^\d{6}$/, 'Invalid verification code'),
+  }),
+});
+export const resendCodeSchema = z.object({
+  body: z.object({ email: emailValidator }),
+});
+export type verifyEmailBody = z.infer<typeof verifyEmailSchema>['body'];
 export type signUpBody = z.infer<typeof signUpSchema>['body'];
-export type localLogInSchemaBody = z.infer<typeof localLogInSchema>['body'];
+export type localLogInBody = z.infer<typeof localLogInSchema>['body'];
