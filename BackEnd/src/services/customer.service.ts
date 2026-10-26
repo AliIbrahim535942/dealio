@@ -144,12 +144,11 @@ export async function resendVerificationCode(email: string): Promise<void> {
      WHERE id = $3 AND is_email_verified = false`,
     [email_verification_code, expiresAt, user.id],
   );
-  console.log(email_verification_code, expiresAt);
-  // await sendEmail(
-  //   email,
-  //   'Verification Code',
-  //   `Welcome to Dealio Platform.\n\nYour verification code is: ${verificationCode}\n\nThis code is valid for 10 minutes.`,
-  //   'verificationEmail',
-  //   { verificationCode, year: new Date().getFullYear() },
-  // );
+  await sendEmail(
+    email,
+    'Verification Code',
+    `Welcome to Dealio Platform.\n\nYour verification code is: ${email_verification_code}\n\nThis code is valid for 10 minutes.`,
+    'verificationEmail',
+    { email_verification_code, year: new Date().getFullYear() },
+  );
 }

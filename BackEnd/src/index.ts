@@ -6,11 +6,25 @@ import dotenv from 'dotenv';
 import authRouter from './routes/auth.route';
 import { errorHandler } from './middlewares/errorHandler';
 import cookieParser from 'cookie-parser';
+import helmet from 'helmet';
+import cors from 'cors';
+
 dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
+app.use(helmet());
+app.use(
+  cors({
+    // Security: only allow configured frontend origin for credentialed requests.
+    origin: process.env.FRONTEND_URL || 'http://localhost:3001',
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    maxAge: 600,
+  }),
+);
 app.use(express.json());
-app.use(cookieParser())
+app.use(cookieParser());
 app.use(passport.initialize());
 // Request logging
 app.use((req: Request, res: Response, next: NextFunction) => {
