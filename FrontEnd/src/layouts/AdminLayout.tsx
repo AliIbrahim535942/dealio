@@ -1,8 +1,18 @@
 import { LayoutDashboard, LogOut } from 'lucide-react';
 import { Link, Outlet } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { useLogout } from '../features/auth/auth.hooks';
+import { useNavigate } from 'react-router-dom';
 
 export function AdminLayout() {
+  const navigate = useNavigate();
+  const logoutMutation = useLogout();
+
+  async function handleLogout() {
+    await logoutMutation.mutateAsync();
+    navigate('/auth/sign-in', { replace: true });
+  }
+
   return (
     <div className='admin-shell'>
       <aside>
@@ -14,7 +24,11 @@ export function AdminLayout() {
             <LayoutDashboard size={18} /> Overview
           </Link>
         </nav>
-        <Button variant='ghost'>
+        <Button
+          variant='ghost'
+          disabled={logoutMutation.isPending}
+          onClick={() => void handleLogout()}
+        >
           <LogOut size={18} /> Sign out
         </Button>
       </aside>
