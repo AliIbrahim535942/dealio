@@ -8,7 +8,7 @@ import { errorHandler } from './middlewares/errorHandler';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import cors from 'cors';
-
+import { startCleanupRefreshTokensJob } from './jobs/cleanupRefreshTokens.job';
 dotenv.config();
 const app: Application = express();
 const PORT = process.env.PORT || 3000;
@@ -84,12 +84,14 @@ app.use(errorHandler);
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM signal received: closing HTTP server');
+  cleanupJob?.stop();
   await pool.end();
   process.exit(0);
 });
 
 process.on('SIGINT', async () => {
   console.log('SIGINT signal received: closing HTTP server');
+  cleanupJob?.stop();
   await pool.end();
   process.exit(0);
 });
@@ -101,3 +103,5 @@ app.listen(PORT, () => {
   console.log(`🗄️  Database test: http://localhost:${PORT}/api/db-test`);
   console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
 });
+const cleanupJob =
+  process.env.NODE_ENV === 'test' ? null : startCleanupRefreshTokensJob();

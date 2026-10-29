@@ -173,3 +173,11 @@ export function verifyAccessToken(token: string): JwtPayload {
     throw error;
   }
 }
+export async function deleteExpiredRefreshTokens(graceDays = 7): Promise<number> {
+  const result = await pool.query(
+    `DELETE FROM refresh_tokens
+     WHERE expires_at < NOW() - make_interval(days => $1)`,
+    [graceDays],
+  );
+  return result.rowCount ?? 0;
+}
