@@ -27,3 +27,39 @@ passport.use(
     },
   ),
 );
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
+import { findOrCreateGoogleUser } from '../services/customer.service';
+import { config } from './env';
+
+passport.use(
+  new GoogleStrategy(
+    {
+      clientID: config.google.clientId,
+      clientSecret: config.google.clientSecret,
+      callbackURL: config.google.callbackUrl,
+    },
+    async (_accessToken, _refreshToken, profile, done) => {
+      try {
+        const email = profile.emails?.[0]?.value;
+        if (!email) {
+          return done(null, false, { message: 'Google account has no email' });
+        }
+
+        // email_verified ممكن يجي boolean أو نص حسب النسخة
+        const raw = (profile._json as { email_verified?: boolean | string })
+          .email_verified;
+        const emailVerified = raw === true || raw === 'true';
+
+        const user = await findOrCreateGoogleUser({
+          googleId: profile.id,
+          email,
+          fullName: profile.displayName || email.split('@')[0],
+          emailVerified,
+        });
+        return done(null, user);
+      } catch (err) {
+        return done(err as Error);
+      }
+    },
+  ),
+);

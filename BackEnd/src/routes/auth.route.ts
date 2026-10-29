@@ -15,6 +15,7 @@ import { authenticate } from '../middlewares/authenticate';
 import { verifyEmailController } from '../controllers/auth/verifyEmail.controller';
 import { resendCodeController } from '../controllers/auth/resendCode.controller';
 import {
+  googleAuthLimiter,
   loginLimiter,
   refreshLimiter,
   resendCodeAccountLimiter,
@@ -24,6 +25,7 @@ import {
   verifyEmailIpLimiter,
 } from '../middlewares/rateLimiter';
 import { requireAdmin } from '../middlewares/requireAdmin';
+import { googleAuthController, googleCallbackController } from '../controllers/auth/google.controller';
 const router = Router();
 router.post(
   '/sign-up',
@@ -54,4 +56,6 @@ router.post(
   validate(resendCodeSchema),
   resendCodeController,
 );
+router.get('/google', googleAuthLimiter, googleAuthController);
+router.get('/google/callback', googleAuthLimiter, googleCallbackController);
 export default router;

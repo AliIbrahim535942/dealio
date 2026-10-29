@@ -91,13 +91,12 @@ export const config = {
   //     apiSecret: requireEnv('CLOUDINARY_API_SECRET'),
   //   },
 
-  //   // YouTube API
-  //   youtube: {
-  //     clientId: requireEnv('YOUTUBE_CLIENT_ID'),
-  //     clientSecret: requireEnv('YOUTUBE_CLIENT_SECRET'),
-  //     redirectUrl: requireEnv('YOUTUBE_REDIRECT_URI'),
-  //     refreshToken: requireEnv('YOUTUBE_REFRESH_TOKEN'),
-  //   },
+  // google
+  google: {
+    clientId: requireEnv('GOOGLE_CLIENT_ID'),
+    clientSecret: requireEnv('GOOGLE_CLIENT_SECRET'),
+    callbackUrl: requireEnv('GOOGLE_CALLBACK_URL'),
+  },
 
   //   cookieMaxAgeMs(): number {
   //     const raw = this.jwt.expiresIn;

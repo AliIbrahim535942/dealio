@@ -100,3 +100,8 @@ export const mutationLimiter = createRateLimiter({
   skip: (req) => SAFE_METHODS.has(req.method),
   message: 'Too many write operations, please wait and retry',
 });
+export const googleAuthLimiter = createRateLimiter({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  message: 'Too many requests, please try again later',
+});

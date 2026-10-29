@@ -9,6 +9,7 @@ import { AppError } from '../utils/AppError';
 import bcrypt from 'bcrypt';
 import { sendEmail } from '../utils/sendEmail';
 import crypto from 'crypto';
+import { GoogleAuthUser, GoogleUserInput } from '../types/google.types';
 const INVALID_CODE = 'Invalid or expired verification code';
 
 /**
@@ -112,7 +113,7 @@ export async function verifyEmail(email: string, code: string): Promise<void> {
   }
 }
 const CODE_TTL_MS = 10 * 60 * 1000;
-const RESEND_COOLDOWN_MS =  60 * 1000;
+const RESEND_COOLDOWN_MS = 60 * 1000;
 
 export async function resendVerificationCode(email: string): Promise<void> {
   const result = await pool.query(
@@ -151,4 +152,86 @@ export async function resendVerificationCode(email: string): Promise<void> {
     'verificationEmail',
     { email_verification_code, year: new Date().getFullYear() },
   );
+}
+
+export async function findOrCreateGoogleUser(
+  input: GoogleUserInput,
+): Promise<GoogleAuthUser> {
+  // 1. Only trust Google accounts whose email address has been verified.
+  if (!input.emailVerified) {
+    throw new AppError('Google email is not verified', 403);
+  }
+  const email = input.email.trim().toLowerCase();
+
+  // 2. An existing Google ID means the user is signing in with a linked account.
+  const byGoogle = await pool.query(
+    `SELECT id, email, role, is_active FROM users WHERE google_id = $1`,
+    [input.googleId],
+  );
+  if (byGoogle.rows[0]) {
+    return ensureActive(byGoogle.rows[0]);
+  }
+
+  // 3. A matching email may belong to an existing account that can be linked.
+  const byEmail = await pool.query(
+    `SELECT id, email, role, is_active, is_email_verified
+     FROM users WHERE LOWER(email) = $1`,
+    [email],
+  );
+  const existing = byEmail.rows[0];
+  if (existing) {
+    ensureActive(existing);
+
+    if (existing.is_email_verified) {
+      // Verified local account: link the Google ID and keep password sign-in enabled.
+      const linked = await pool.query(
+        `UPDATE users SET google_id = $1, updated_at = CURRENT_TIMESTAMP
+         WHERE id = $2 AND google_id IS NULL
+         RETURNING id, email, role, is_active`,
+        [input.googleId, existing.id],
+      );
+      if (linked.rowCount === 0)
+        throw new AppError('Could not link account', 409);
+      return linked.rows[0];
+    }
+
+    // Unverified local account: claim it through verified Google ownership,
+    // remove the password, and mark the email as verified to prevent pre-hijacking.
+    const claimed = await pool.query(
+      `UPDATE users
+       SET google_id = $1, password = NULL, auth_provider = 'google',
+           is_email_verified = true,
+           "verificationCode" = NULL, "verificationCodeTimestamp" = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $2 AND google_id IS NULL
+       RETURNING id, email, role, is_active`,
+      [input.googleId, existing.id],
+    );
+    if (claimed.rowCount === 0)
+      throw new AppError('Could not link account', 409);
+    return claimed.rows[0];
+  }
+
+  // 4. No matching account exists, so create a new Google-only user.
+  try {
+    const created = await pool.query(
+      `INSERT INTO users (full_name, email, password, auth_provider, google_id, is_email_verified)
+       VALUES ($1, $2, NULL, 'google', $3, true)
+       RETURNING id, email, role, is_active`,
+      [input.fullName, email, input.googleId],
+    );
+    return created.rows[0];
+  } catch (error: any) {
+    if (error.code === '23505') {
+      throw new AppError('Account already exists, please try again', 409);
+    }
+    throw error;
+  }
+}
+
+function ensureActive<T extends { is_active: boolean }>(user: T): T {
+  if (!user.is_active) {
+    throw new AppError('Account is deactivated', 403);
+  }
+  return user;
 }
