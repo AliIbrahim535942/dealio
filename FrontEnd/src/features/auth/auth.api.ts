@@ -66,7 +66,7 @@ export async function resendCode(input: ResendCodeInput) {
 
 export function getGoogleAuthUrl() {
   const baseUrl = import.meta.env.VITE_API_BASE_URL ?? '/api';
-  return `${baseUrl}auth/google`;
+  return `${baseUrl.replace(/\/$/, '')}/auth/google`;
 }
 
 export function getAuthErrorMessage(

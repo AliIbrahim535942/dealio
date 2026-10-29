@@ -1,6 +1,7 @@
-import { Search, ShoppingBag, UserRound } from 'lucide-react';
+import { Search, ShoppingBag } from 'lucide-react';
 import { Link, Outlet } from 'react-router-dom';
 import { Button } from '../components/ui/button';
+import { AccountMenu } from '../features/auth/AccountMenu';
 
 export function StorefrontLayout() {
   return (
@@ -17,9 +18,7 @@ export function StorefrontLayout() {
           <Button variant='ghost' aria-label='Search'>
             <Search size={19} />
           </Button>
-          <Button variant='ghost' aria-label='Account'>
-            <UserRound size={19} />
-          </Button>
+          <AccountMenu />
           <Button variant='ghost' aria-label='Shopping bag'>
             <ShoppingBag size={19} />
           </Button>

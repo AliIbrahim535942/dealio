@@ -4,7 +4,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import { AuthField } from '../../features/auth/AuthField';
 import { AuthPageFrame } from '../../features/auth/AuthPageFrame';
-import { getAuthErrorMessage } from '../../features/auth/auth.api';
+import {
+  getAuthErrorMessage,
+  getGoogleAuthUrl,
+} from '../../features/auth/auth.api';
 import { useSignUp } from '../../features/auth/auth.hooks';
 import {
   signUpSchema,
@@ -77,6 +80,14 @@ export function SignUpPage() {
         )}
         <Button type='submit' disabled={signUpMutation.isPending}>
           {signUpMutation.isPending ? 'Creating account...' : 'Create account'}
+        </Button>
+        <span className='form-divider'>or</span>
+        <Button
+          type='button'
+          variant='secondary'
+          onClick={() => window.location.assign(getGoogleAuthUrl())}
+        >
+          Continue with Google
         </Button>
       </form>
     </AuthPageFrame>
