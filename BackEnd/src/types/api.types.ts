@@ -23,3 +23,14 @@ export interface UserProfile {
   is_email_verified: boolean;
   created_at: Date;
 }
+export interface Category {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  image_url: string | null;
+  parent_id: number | null;
+  is_active: boolean;
+  created_at: Date;
+  updated_at: Date;
+}

@@ -84,12 +84,12 @@ export const config = {
   //     webhookSecret: requireEnv('STRIPE_WEBHOOK_SECRET'),
   //   },
 
-  //   // Cloudinary
-  //   cloudinary: {
-  //     cloudName: requireEnv('CLOUDINARY_CLOUD_NAME'),
-  //     apiKey: requireEnv('CLOUDINARY_API_KEY'),
-  //     apiSecret: requireEnv('CLOUDINARY_API_SECRET'),
-  //   },
+    // Cloudinary
+    cloudinary: {
+      cloudName: requireEnv('CLOUDINARY_CLOUD_NAME'),
+      apiKey: requireEnv('CLOUDINARY_API_KEY'),
+      apiSecret: requireEnv('CLOUDINARY_API_SECRET'),
+    },
 
   // google
   google: {
