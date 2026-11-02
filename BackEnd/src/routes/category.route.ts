@@ -1,12 +1,16 @@
-import { uploadMedia } from '../middlewares/uploadMedia'; 
+import { uploadMedia } from '../middlewares/uploadMedia';
 import { cleanupUploads } from '../middlewares/cleanupUploads';
 import { authenticate } from '../middlewares/authenticate';
 import { requireAdmin } from '../middlewares/requireAdmin';
 import { mutationLimiter } from '../middlewares/rateLimiter';
-import { createCategorySchema } from '../validations/categories.validations';
+import {
+  categoryIdParamSchema,
+  createCategorySchema,
+} from '../validations/categories.validations';
 import { validate } from '../middlewares/validate';
 import { Router } from 'express';
 import { createCategoryController } from '../controllers/categories/createCategory.controller';
+import { deleteCategoryController } from '../controllers/categories/deleteCategory.controller';
 
 const router = Router();
 
@@ -20,4 +24,12 @@ router.post(
   validate(createCategorySchema),
   createCategoryController,
 );
-export default router
+router.delete(
+  '/:id',
+  authenticate,
+  // requireAdmin,
+  mutationLimiter,
+  validate(categoryIdParamSchema),
+  deleteCategoryController,
+);
+export default router;

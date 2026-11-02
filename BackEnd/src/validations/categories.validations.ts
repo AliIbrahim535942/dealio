@@ -24,5 +24,10 @@ export const createCategorySchema = z.object({
     })
     .strict(),
 });
+export const categoryIdParamSchema = z.object({
+  params: z.object({
+    id: z.coerce.number().int().positive().max(2147483647),
+  }),
+});
 
 export type createCategoryBody = z.infer<typeof createCategorySchema>['body'];

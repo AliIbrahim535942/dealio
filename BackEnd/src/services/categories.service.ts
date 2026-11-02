@@ -1,3 +1,4 @@
+import { withTransaction } from '../utils/withTransaction';
 import { PoolClient } from 'pg';
 import pool from '../config/database';
 import { AppError } from '../utils/AppError';
@@ -93,13 +94,9 @@ async function insertWithUniqueSlug(
   throw new AppError('Could not generate a unique slug', 409);
 }
 
-async function persistCategory(data: PersistCategoryData): Promise<Category> {
-  const client = await pool.connect();
-  let connectionBroken: Error | undefined;
 
-  try {
-    await client.query('BEGIN');
-
+function persistCategory(data: PersistCategoryData): Promise<Category> {
+  return withTransaction(async (client) => {
     if (data.parent_id != null) {
       // FOR SHARE: the parent can't be deactivated until we commit
       const parent = await client.query(
@@ -111,20 +108,8 @@ async function persistCategory(data: PersistCategoryData): Promise<Category> {
       }
     }
 
-    const category = await insertWithUniqueSlug(client, data);
-    await client.query('COMMIT');
-    return category;
-  } catch (error) {
-    try {
-      await client.query('ROLLBACK');
-    } catch (rollbackError) {
-      console.error('Rollback failed:', rollbackError);
-      connectionBroken = rollbackError as Error;
-    }
-    throw error;
-  } finally {
-    client.release(connectionBroken); // a broken client is destroyed, not returned to the pool
-  }
+    return insertWithUniqueSlug(client, data);
+  });
 }
 
 export async function createCategory(
@@ -158,4 +143,43 @@ export async function createCategory(
       await runCleanup('local', () => cleanupLocalUploads([image]));
     }
   }
+}
+// Serializes operations that restructure the tree (delete now, move later)
+const TREE_LOCK_KEY = 'categories:tree';
+
+export async function deleteCategory(
+  id: number,
+): Promise<{ category: Category; reparentedChildren: number }> {
+  return withTransaction(async (client) => {
+    await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [
+      TREE_LOCK_KEY,
+    ]);
+
+    const target = await client.query<{ parent_id: number | null }>(
+      'SELECT parent_id FROM categories WHERE id=$1 AND is_active = true FOR UPDATE',
+      [id],
+    );
+    if (target.rows.length === 0) {
+      throw new AppError('Category not found', 404);
+    }
+    const { parent_id } = target.rows[0];
+
+    // Children inherit the deleted category's parent (NULL when it was a root)
+    const moved = await client.query(
+      'UPDATE categories SET parent_id=$1, updated_at=now() WHERE parent_id=$2',
+      [parent_id, id],
+    );
+
+    const deleted = await client.query<Category>(
+      `UPDATE categories SET is_active = false, updated_at = now()
+       WHERE id=$1
+       RETURNING ${CATEGORY_COLUMNS}`,
+      [id],
+    );
+
+    return {
+      category: deleted.rows[0],
+      reparentedChildren: moved.rowCount ?? 0,
+    };
+  });
 }
