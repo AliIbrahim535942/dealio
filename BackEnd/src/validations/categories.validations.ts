@@ -1,18 +1,19 @@
 import { z } from 'zod';
 import { slugify } from '../utils/slugify';
 
+const categoryNameSchema = z
+  .string()
+  .trim()
+  .min(1, 'Name is required')
+  .max(100)
+  .refine(
+    (value) => slugify(value).length > 0,
+    'Name must contain at least one Latin letter or number',
+  );
 export const createCategorySchema = z.object({
   body: z
     .object({
-      name: z
-        .string()
-        .trim()
-        .min(1, 'Name is required')
-        .max(100)
-        .refine(
-          (value) => slugify(value).length > 0,
-          'Name must contain at least one Latin letter or number',
-        ),
+      name: categoryNameSchema,
       description: z.string().trim().max(2000).optional(),
       parent_id: z.preprocess(
         (value) =>
@@ -39,4 +40,25 @@ export const categorySlugParamSchema = z.object({
       .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Invalid slug format'),
   }),
 });
+export const updateCategorySchema = z.object({
+  params: categoryIdParamSchema.shape.params,
+  body: z
+    .object({
+      name: categoryNameSchema.optional(),
+      description: z
+        .string()
+        .trim()
+        .max(2000)
+        .transform((value) => (value === '' ? null : value))
+        .nullable()
+        .optional(),
+    })
+    .strict()
+    .refine(
+      (body) => Object.keys(body).length > 0,
+      'At least one field (name or description) is required',
+    ),
+});
+
+export type updateCategoryBody = z.infer<typeof updateCategorySchema>['body'];
 export type createCategoryBody = z.infer<typeof createCategorySchema>['body'];

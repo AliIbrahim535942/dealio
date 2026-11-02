@@ -6,7 +6,7 @@ import pool from '../config/database';
 import { AppError } from '../utils/AppError';
 import { slugify, slugWithSuffix } from '../utils/slugify';
 import { Category } from '../types/api.types';
-import { createCategoryBody } from '../validations/categories.validations';
+import { createCategoryBody,updateCategoryBody } from '../validations/categories.validations';
 import {
   UploadedImage,
   uploadImage,
@@ -269,4 +269,26 @@ export async function getCategoryBySlug(slug: string): Promise<CategoryDetails> 
   ]);
 
   return { ...category, ancestors, children: children.rows };
+}
+export async function updateCategory(
+  id: number,
+  input: updateCategoryBody,
+): Promise<Category> {
+  const hasDescription = input.description !== undefined;
+
+  // Single atomic statement: absent fields keep their current value
+  const result = await pool.query<Category>(
+    `UPDATE categories
+     SET name = COALESCE($2::varchar, name),
+         description = CASE WHEN $3::boolean THEN $4::text ELSE description END,
+         updated_at = now()
+     WHERE id = $1 AND is_active = true
+     RETURNING ${CATEGORY_COLUMNS}`,
+    [id, input.name ?? null, hasDescription, input.description ?? null],
+  );
+
+  if (result.rows.length === 0) {
+    throw new AppError('Category not found', 404);
+  }
+  return result.rows[0];
 }

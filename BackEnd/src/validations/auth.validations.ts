@@ -56,6 +56,7 @@ export const verifyEmailSchema = z.object({
 export const resendCodeSchema = z.object({
   body: z.object({ email: emailValidator }),
 });
+
 export type verifyEmailBody = z.infer<typeof verifyEmailSchema>['body'];
 export type signUpBody = z.infer<typeof signUpSchema>['body'];
 export type localLogInBody = z.infer<typeof localLogInSchema>['body'];
