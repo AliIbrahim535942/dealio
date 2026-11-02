@@ -1,3 +1,5 @@
+import { CategoryDetails, CategoryNode, PublicCategory } from '../types/api.types';
+
 import { withTransaction } from '../utils/withTransaction';
 import { PoolClient } from 'pg';
 import pool from '../config/database';
@@ -15,6 +17,7 @@ import {
 const MAX_SLUG_ATTEMPTS = 10;
 const MAX_BASE_SLUG_LENGTH = 100; // + suffix like "-10" stays under the 120 column limit
 
+const PUBLIC_COLUMNS = 'id, name, slug, description, image_url, parent_id';
 const CATEGORY_COLUMNS = `id, name, slug, description, image_url, parent_id,
   is_active, created_at, updated_at`;
 
@@ -182,4 +185,88 @@ export async function deleteCategory(
       reparentedChildren: moved.rowCount ?? 0,
     };
   });
+}
+
+
+/**
+ * One recursive query for the whole tree (no N+1).
+ * `path` guards against infinite recursion if a cycle ever existed.
+ */
+export async function getCategoryTree(): Promise<CategoryNode[]> {
+  const result = await pool.query<PublicCategory>(
+    `WITH RECURSIVE tree AS (
+       SELECT ${PUBLIC_COLUMNS}, 0 AS depth, ARRAY[id] AS path
+       FROM categories
+       WHERE parent_id IS NULL AND is_active = true
+       UNION ALL
+       SELECT c.id, c.name, c.slug, c.description, c.image_url, c.parent_id,
+              t.depth + 1, t.path || c.id
+       FROM categories c
+       JOIN tree t ON c.parent_id = t.id
+       WHERE c.is_active = true AND NOT (c.id = ANY(t.path))
+     )
+     SELECT ${PUBLIC_COLUMNS} FROM tree ORDER BY depth, name`,
+  );
+
+  // Rows are ordered by depth, so a parent is always registered before its children
+  const nodes = new Map<number, CategoryNode>();
+  const roots: CategoryNode[] = [];
+
+  for (const row of result.rows) {
+    const node: CategoryNode = { ...row, children: [] };
+    nodes.set(node.id, node);
+
+    if (row.parent_id === null) {
+      roots.push(node);
+    } else {
+      nodes.get(row.parent_id)?.children.push(node);
+    }
+  }
+
+  return roots;
+}
+
+async function getAncestors(
+  parentId: number,
+): Promise<CategoryDetails['ancestors']> {
+  const result = await pool.query<CategoryDetails['ancestors'][number]>(
+    `WITH RECURSIVE ancestors AS (
+       SELECT id, name, slug, parent_id, 1 AS level, ARRAY[id] AS path
+       FROM categories
+       WHERE id = $1
+       UNION ALL
+       SELECT c.id, c.name, c.slug, c.parent_id, a.level + 1, a.path || c.id
+       FROM categories c
+       JOIN ancestors a ON c.id = a.parent_id
+       WHERE NOT (c.id = ANY(a.path))
+     )
+     SELECT id, name, slug FROM ancestors ORDER BY level DESC`,
+    [parentId],
+  );
+  return result.rows; // root first, direct parent last
+}
+
+export async function getCategoryBySlug(slug: string): Promise<CategoryDetails> {
+  const found = await pool.query<PublicCategory>(
+    `SELECT ${PUBLIC_COLUMNS} FROM categories WHERE slug=$1 AND is_active = true`,
+    [slug],
+  );
+  const category = found.rows[0];
+  if (!category) {
+    throw new AppError('Category not found', 404);
+  }
+
+  const [children, ancestors] = await Promise.all([
+    pool.query<PublicCategory>(
+      `SELECT ${PUBLIC_COLUMNS} FROM categories
+       WHERE parent_id=$1 AND is_active = true
+       ORDER BY name`,
+      [category.id],
+    ),
+    category.parent_id === null
+      ? Promise.resolve([])
+      : getAncestors(category.parent_id),
+  ]);
+
+  return { ...category, ancestors, children: children.rows };
 }

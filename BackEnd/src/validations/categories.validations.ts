@@ -29,5 +29,14 @@ export const categoryIdParamSchema = z.object({
     id: z.coerce.number().int().positive().max(2147483647),
   }),
 });
-
+export const categorySlugParamSchema = z.object({
+  params: z.object({
+    slug: z
+      .string()
+      .trim()
+      .toLowerCase()
+      .max(120)
+      .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Invalid slug format'),
+  }),
+});
 export type createCategoryBody = z.infer<typeof createCategorySchema>['body'];

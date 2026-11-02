@@ -1,3 +1,5 @@
+import { getCategoryBySlugController } from '../controllers/categories/getCategoryBySlug.controller';
+import { getCategoryTreeController } from '../controllers/categories/getCategories.controller';
 import { uploadMedia } from '../middlewares/uploadMedia';
 import { cleanupUploads } from '../middlewares/cleanupUploads';
 import { authenticate } from '../middlewares/authenticate';
@@ -6,6 +8,7 @@ import { mutationLimiter } from '../middlewares/rateLimiter';
 import {
   categoryIdParamSchema,
   createCategorySchema,
+  categorySlugParamSchema,
 } from '../validations/categories.validations';
 import { validate } from '../middlewares/validate';
 import { Router } from 'express';
@@ -31,5 +34,12 @@ router.delete(
   mutationLimiter,
   validate(categoryIdParamSchema),
   deleteCategoryController,
+);
+
+router.get('/', getCategoryTreeController);
+router.get(
+  '/:slug',
+  validate(categorySlugParamSchema),
+  getCategoryBySlugController,
 );
 export default router;

@@ -8,8 +8,8 @@ export interface CustomerInfoResponse {
 export interface UserToLogin {
   id: number;
   email: string;
-  password: string|null;
-  role: 'customer'|'admin';
+  password: string | null;
+  role: 'customer' | 'admin';
   is_active: boolean;
   is_email_verified: boolean;
 }
@@ -33,4 +33,17 @@ export interface Category {
   is_active: boolean;
   created_at: Date;
   updated_at: Date;
+}
+export type PublicCategory = Pick<
+  Category,
+  'id' | 'name' | 'slug' | 'description' | 'image_url' | 'parent_id'
+>;
+
+export interface CategoryNode extends PublicCategory {
+  children: CategoryNode[];
+}
+
+export interface CategoryDetails extends PublicCategory {
+  ancestors: Pick<Category, 'id' | 'name' | 'slug'>[];
+  children: PublicCategory[];
 }
