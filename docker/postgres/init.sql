@@ -103,6 +103,7 @@ CREATE TYPE user_role AS ENUM ('customer', 'admin');
   CREATE TABLE IF NOT EXISTS product_images (
     id SERIAL PRIMARY KEY,
     product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+    image_public_id VARCHAR(255) NOT NULL,
     image_url VARCHAR(255) NOT NULL,
     is_primary BOOLEAN NOT NULL DEFAULT false,
     display_order INTEGER NOT NULL DEFAULT 0,

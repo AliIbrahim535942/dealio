@@ -5,6 +5,7 @@ import passport from 'passport';
 import dotenv from 'dotenv';
 import authRouter from './routes/auth.route';
 import categoryRouter from './routes/category.route'
+import productRouter from './routes/product.route'
 import { errorHandler } from './middlewares/errorHandler';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
@@ -34,6 +35,8 @@ app.use((req: Request, res: Response, next: NextFunction) => {
 });
 app.use('/api/auth', authRouter);
 app.use('/api/category', categoryRouter);
+app.use('/api/product', productRouter);
+
 // Health check endpoint
 app.get('/api/health', (req: Request, res: Response) => {
   res.json({
