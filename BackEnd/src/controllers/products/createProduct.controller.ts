@@ -1,10 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../../utils/AppError';
-import {
-  createProduct,
-  type CreateProductInput,
-} from '../../services/product.service';
-
+import { createProduct } from '../../services/product.service';
+import {  type CreateProductInput} from '../../validations/products.validations'
 const MAX_PRODUCT_IMAGES = 3;
 
 // uploadMedia may assign req.files as an array (.array) or an object (.fields), so support both shapes.

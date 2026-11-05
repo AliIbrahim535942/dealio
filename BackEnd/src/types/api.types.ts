@@ -47,3 +47,40 @@ export interface CategoryDetails extends PublicCategory {
   ancestors: Pick<Category, 'id' | 'name' | 'slug'>[];
   children: PublicCategory[];
 }
+export interface ProductPublic {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: string;
+  stock_quantity: number;
+  categories: { id: number; name: string; slug: string }[];
+  images: {
+    id: number;
+    image_url: string;
+    is_primary: boolean;
+    display_order: number;
+  }[];
+}
+export interface Product {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  price: string; // DECIMAL values remain strings.
+  stock_quantity: number;
+  sku: string | null;
+  created_at: Date;
+}
+
+export interface ProductImage {
+  id: number;
+  image_url: string;
+  is_primary: boolean;
+  display_order: number;
+}
+
+export interface ProductWithDetails extends Product {
+  category_ids: number[];
+  images: ProductImage[];
+}

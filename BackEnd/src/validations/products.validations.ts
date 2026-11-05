@@ -76,3 +76,4 @@ export const listProductsSchema = z.object({
       { message: 'min_price must not exceed max_price', path: ['min_price'] },
     ),
 });
+export type CreateProductInput = z.infer<typeof createProductSchema>['body'];

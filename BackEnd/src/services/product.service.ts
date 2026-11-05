@@ -1,5 +1,4 @@
 import type { PoolClient } from 'pg';
-import type { z } from 'zod';
 import pool from '../config/database';
 import { AppError } from '../utils/AppError';
 import { slugify, slugWithSuffix } from '../utils/slugify';
@@ -10,9 +9,13 @@ import {
   cleanupLocalUploads,
   type UploadedImage,
 } from './cloudinary.service';
-import type { createProductSchema } from '../validations/products.validations';
-
-export type CreateProductInput = z.infer<typeof createProductSchema>['body'];
+import { CreateProductInput } from '../validations/products.validations';
+import {
+  ProductPublic,
+  Product,
+  ProductImage,
+  ProductWithDetails,
+} from '../types/api.types';
 
 const MAX_BASE_SLUG_LENGTH = 200;
 const MAX_SLUG_ATTEMPTS = 10;
@@ -22,29 +25,6 @@ const PRODUCT_COLUMNS =
 
 const ACTIVE_CATEGORIES_SQL =
   'SELECT id FROM categories WHERE id = ANY($1::int[]) AND is_active = true';
-
-interface Product {
-  id: number;
-  name: string;
-  slug: string;
-  description: string | null;
-  price: string; // DECIMAL values remain strings.
-  stock_quantity: number;
-  sku: string | null;
-  created_at: Date;
-}
-
-interface ProductImage {
-  id: number;
-  image_url: string;
-  is_primary: boolean;
-  display_order: number;
-}
-
-export interface ProductWithDetails extends Product {
-  category_ids: number[];
-  images: ProductImage[];
-}
 
 /**
  * ON CONFLICT DO NOTHING applies only to the slug. A SKU conflict (23505 on
@@ -157,4 +137,39 @@ export async function createProduct(
   } finally {
     await cleanupLocalUploads(files);
   }
+}
+
+export async function getProductBySlug(slug: string): Promise<ProductPublic> {
+  // Use one query without N+1 queries; categories and images are returned through JSON subqueries.
+  const result = await pool.query<ProductPublic>(
+    `SELECT p.id, p.name, p.slug, p.description, p.price, p.stock_quantity,
+       COALESCE((
+         SELECT json_agg(
+                  json_build_object('id', c.id, 'name', c.name, 'slug', c.slug)
+                  ORDER BY c.name
+                )
+         FROM product_categories pc
+         JOIN categories c ON c.id = pc.category_id
+         WHERE pc.product_id = p.id AND c.is_active = true
+       ), '[]'::json) AS categories,
+       COALESCE((
+         SELECT json_agg(
+                  json_build_object(
+                    'id', i.id,
+                    'image_url', i.image_url,
+                    'is_primary', i.is_primary,
+                    'display_order', i.display_order
+                  )
+                  ORDER BY i.display_order, i.id
+                )
+         FROM product_images i
+         WHERE i.product_id = p.id
+       ), '[]'::json) AS images
+     FROM products p
+     WHERE p.slug = $1 AND p.is_active = true`,
+    [slug],
+  );
+
+  if (!result.rows[0]) throw new AppError('Product not found', 404);
+  return result.rows[0];
 }
