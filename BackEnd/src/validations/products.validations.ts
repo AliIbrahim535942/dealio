@@ -76,5 +76,26 @@ export const listProductsSchema = z.object({
       { message: 'min_price must not exceed max_price', path: ['min_price'] },
     ),
 });
+
+const productName = z.string().trim().min(1).max(200);
+
+export const updateProductSchema = z.object({
+  params: z.object({ id: positiveInt }),
+  body: z
+    .object({
+      name: productName.optional(),
+      // null أو "" بيمسح الوصف
+      description: z.string().trim().max(5000).nullable().optional(),
+      price: priceString.optional(),
+      stock_quantity: z.number().int().min(0).max(1_000_000).optional(),
+      // null بيمسح الـ sku
+      sku: z.string().trim().min(1).max(100).nullable().optional(),
+    })
+    .strict()
+    .refine((b) => Object.keys(b).length > 0, 'At least one field is required'),
+});
+
+export type UpdateProductInput = z.infer<typeof updateProductSchema>['body'];
+
 export type CreateProductInput = z.infer<typeof createProductSchema>['body'];
 export type ListProductsQuery = z.infer<typeof listProductsSchema>['query'];

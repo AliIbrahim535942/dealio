@@ -9,7 +9,7 @@ import {
   cleanupLocalUploads,
   type UploadedImage,
 } from './cloudinary.service';
-import { CreateProductInput } from '../validations/products.validations';
+import { CreateProductInput,UpdateProductInput } from '../validations/products.validations';
 import {
   ProductPublic,
   Product,
@@ -271,4 +271,52 @@ export async function listProducts(
       total_pages: Math.ceil(total / query.limit),
     },
   };
+}
+
+export async function updateProduct(
+  id: number,
+  data: UpdateProductInput,
+): Promise<Product> {
+  const sets: string[] = [];
+  const params: unknown[] = [];
+  // أسماء الأعمدة literals ثابتة هون، والقيم كلها parameters
+  const set = (column: string, value: unknown): void => {
+    params.push(value);
+    sets.push(`${column} = $${params.length}`);
+  };
+
+  if (data.name !== undefined) set('name', data.name);
+  if (data.description !== undefined) set('description', data.description || null);
+  if (data.price !== undefined) set('price', data.price);
+  if (data.stock_quantity !== undefined) set('stock_quantity', data.stock_quantity);
+  if (data.sku !== undefined) set('sku', data.sku);
+
+  params.push(id);
+
+  try {
+    // UPDATE واحد atomic، والمنتج المعطّل بيرجع 404
+    const result = await pool.query<Product>(
+      `UPDATE products
+       SET ${sets.join(', ')}, updated_at = now()
+       WHERE id = $${params.length} AND is_active = true
+       RETURNING ${PRODUCT_COLUMNS}`,
+      params,
+    );
+
+    if (!result.rows[0]) throw new AppError('Product not found', 404);
+    return result.rows[0];
+  } catch (error) {
+    throw mapProductError(error); // sku مكرر ← 409
+  }
+}
+export async function deleteProduct(id: number): Promise<void> {
+  // UPDATE واحد atomic. الشرط is_active = true بيخلي الحذف المكرر 404 (نفس سلوك التصنيفات)
+  const result = await pool.query(
+    `UPDATE products
+     SET is_active = false, updated_at = now()
+     WHERE id = $1 AND is_active = true`,
+    [id],
+  );
+
+  if (result.rowCount === 0) throw new AppError('Product not found', 404);
 }
