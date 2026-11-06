@@ -31,7 +31,32 @@ type PersistCategoryData = {
   parent_id?: number | null;
   image_url: string | null;
 };
+/**
+ * ينقل منتجات تصنيف محذوف لأبوه، أو يفكّ ارتباطها إذا كان root.
+ * لازم تُستدعى داخل نفس transaction، وبعد الـ UPDATE اللي بيعطّل التصنيف.
+ */
+async function reassignProductsToParent(
+  client: PoolClient,
+  categoryId: number,
+  parentId: number | null,
+): Promise<void> {
+  if (parentId !== null) {
+    // ON CONFLICT: المنتج ممكن يكون أصلاً بالأب، فما بنكرر الرابط
+    await client.query(
+      `INSERT INTO product_categories (product_id, category_id)
+       SELECT product_id, $2
+       FROM product_categories
+       WHERE category_id = $1
+       ON CONFLICT DO NOTHING`,
+      [categoryId, parentId],
+    );
+  }
 
+  await client.query(
+    'DELETE FROM product_categories WHERE category_id = $1',
+    [categoryId],
+  );
+}
 /**
  * Cleanup must never mask the original error, so failures are only logged.
  */
@@ -179,6 +204,9 @@ export async function deleteCategory(
        RETURNING ${CATEGORY_COLUMNS}`,
       [id],
     );
+
+    // منتجات التصنيف المحذوف بتنتقل لأبوه (أو بتنفك إذا root)
+    await reassignProductsToParent(client, id, parent_id);
 
     return {
       category: deleted.rows[0],
