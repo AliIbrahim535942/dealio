@@ -7,10 +7,12 @@ import { cleanupUploads } from '../middlewares/cleanupUploads';
 import { validate } from '../middlewares/validate';
 import {
   createProductSchema,
+  listProductsSchema,
   productSlugParamSchema,
 } from '../validations/products.validations';
 import { createProductController } from '../controllers/products/createProduct.controller';
 import { getProductBySlugController } from '../controllers/products/getProductBySlug.controller';
+import { listProductsController } from '../controllers/products/getAllProducts.controller';
 
 const router = Router();
 
@@ -29,4 +31,5 @@ router.get(
   validate(productSlugParamSchema),
   getProductBySlugController,
 );
+router.get('/', validate(listProductsSchema), listProductsController);
 export default router;

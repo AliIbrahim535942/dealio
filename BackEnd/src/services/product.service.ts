@@ -16,6 +16,8 @@ import {
   ProductImage,
   ProductWithDetails,
 } from '../types/api.types';
+import type { ListProductsQuery } from '../validations/products.validations';
+import { ProductListItem, ProductListResult } from '../types/api.types';
 
 const MAX_BASE_SLUG_LENGTH = 200;
 const MAX_SLUG_ATTEMPTS = 10;
@@ -172,4 +174,101 @@ export async function getProductBySlug(slug: string): Promise<ProductPublic> {
 
   if (!result.rows[0]) throw new AppError('Product not found', 404);
   return result.rows[0];
+}
+
+// whitelist ثابتة: مدخل المستخدم ما بيوصل للـ SQL. id للـ tie-breaker عشان الـ pagination يبقى ثابت
+const SORT_SQL: Record<ListProductsQuery['sort'], string> = {
+  newest: 'p.created_at DESC, p.id DESC',
+  price_asc: 'p.price ASC, p.id ASC',
+  price_desc: 'p.price DESC, p.id DESC',
+  name_asc: 'p.name ASC, p.id ASC',
+};
+
+// بدون escape بيصير % و _ و \ من المستخدم wildcards
+function escapeLike(value: string): string {
+  return value.replace(/[\\%_]/g, '\\$&');
+}
+
+export async function listProducts(
+  query: ListProductsQuery,
+): Promise<ProductListResult> {
+  const params: unknown[] = [];
+  const bind = (value: unknown): string => {
+    params.push(value);
+    return `$${params.length}`;
+  };
+
+  const conditions: string[] = ['p.is_active = true'];
+  let cte = '';
+
+  if (query.category) {
+    // UNION (مش UNION ALL) بيوقف الـ recursion لو صار حلقة بالشجرة
+    cte = `WITH RECURSIVE subtree AS (
+      SELECT id FROM categories WHERE slug = ${bind(query.category)} AND is_active = true
+      UNION
+      SELECT c.id FROM categories c
+      JOIN subtree s ON c.parent_id = s.id
+      WHERE c.is_active = true
+    )`;
+    // EXISTS مش JOIN: المنتج بأكثر من تصنيف ما لازم يتكرر
+    conditions.push(
+      `EXISTS (
+         SELECT 1 FROM product_categories pc
+         WHERE pc.product_id = p.id
+           AND pc.category_id IN (SELECT id FROM subtree)
+       )`,
+    );
+  }
+
+  if (query.q) {
+    const pattern = bind(`%${escapeLike(query.q)}%`);
+    conditions.push(
+      `(p.name ILIKE ${pattern} OR p.description ILIKE ${pattern})`,
+    );
+  }
+
+  if (query.min_price)
+    conditions.push(`p.price >= ${bind(query.min_price)}::numeric`);
+  if (query.max_price)
+    conditions.push(`p.price <= ${bind(query.max_price)}::numeric`);
+
+  const where = conditions.join(' AND ');
+
+  // الـ count ما بيحتاج limit/offset، فبناخد نسخة من الـ params قبلهم
+  // (pg بيرفض لو عدد الـ params أكتر من الـ placeholders المستخدمة)
+  const filterParams = [...params];
+  const limitRef = bind(query.limit);
+  const offsetRef = bind((query.page - 1) * query.limit);
+
+  const [countResult, dataResult] = await Promise.all([
+    pool.query<{ total: string }>(
+      `${cte} SELECT COUNT(*) AS total FROM products p WHERE ${where}`,
+      filterParams,
+    ),
+    pool.query<ProductListItem>(
+      `${cte}
+       SELECT p.id, p.name, p.slug, p.price, p.stock_quantity,
+         (SELECT i.image_url FROM product_images i
+          WHERE i.product_id = p.id
+          ORDER BY i.is_primary DESC, i.display_order, i.id
+          LIMIT 1) AS primary_image
+       FROM products p
+       WHERE ${where}
+       ORDER BY ${SORT_SQL[query.sort]}
+       LIMIT ${limitRef} OFFSET ${offsetRef}`,
+      params,
+    ),
+  ]);
+
+  const total = Number(countResult.rows[0].total);
+
+  return {
+    items: dataResult.rows,
+    meta: {
+      page: query.page,
+      limit: query.limit,
+      total,
+      total_pages: Math.ceil(total / query.limit),
+    },
+  };
 }

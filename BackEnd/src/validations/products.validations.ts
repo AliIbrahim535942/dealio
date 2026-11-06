@@ -77,3 +77,4 @@ export const listProductsSchema = z.object({
     ),
 });
 export type CreateProductInput = z.infer<typeof createProductSchema>['body'];
+export type ListProductsQuery = z.infer<typeof listProductsSchema>['query'];

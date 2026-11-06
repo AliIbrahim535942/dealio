@@ -84,3 +84,18 @@ export interface ProductWithDetails extends Product {
   category_ids: number[];
   images: ProductImage[];
 }
+
+
+export interface ProductListItem {
+  id: number;
+  name: string;
+  slug: string;
+  price: string;
+  stock_quantity: number;
+  primary_image: string | null;
+}
+
+export interface ProductListResult {
+  items: ProductListItem[];
+  meta: { page: number; limit: number; total: number; total_pages: number };
+}
