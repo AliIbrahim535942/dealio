@@ -85,7 +85,6 @@ export interface ProductWithDetails extends Product {
   images: ProductImage[];
 }
 
-
 export interface ProductListItem {
   id: number;
   name: string;
@@ -98,4 +97,20 @@ export interface ProductListItem {
 export interface ProductListResult {
   items: ProductListItem[];
   meta: { page: number; limit: number; total: number; total_pages: number };
+}
+export interface CartItem {
+  product_id: number;
+  name: string;
+  slug: string;
+  price: string;
+  quantity: number;
+  line_total: string;
+  stock_quantity: number;
+  primary_image: string | null;
+  available: boolean;
+}
+
+export interface Cart {
+  items: CartItem[];
+  subtotal: string;
 }
